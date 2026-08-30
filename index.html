@@ -2915,14 +2915,40 @@ try { var _t = localStorage.getItem('gr-tema');
         '<span class="velo"></span><span class="n">' + por(c.f).length + '</span>' +
       '</span><span class="nom">' + c.n + '</span></a>';
   }
-  /* La lista va pintada DOS VECES, que es lo que pide el motor: cuando el
-     scroll pasa el ancho de una copia se le resta ese ancho y el ojo no lo
-     nota, porque lo que queda delante es identico. La segunda copia sale del
-     recorrido del tabulador y del lector de pantalla, que si no cada categoria
-     se anuncia y se pulsa dos veces. */
-  document.getElementById('rielCat').innerHTML =
-    CATS.map(function(c, ci){ return casilla(c, ci, false); }).join('') +
-    CATS.map(function(c, ci){ return casilla(c, ci, true); }).join('');
+  /* La lista va pintada VARIAS VECES, siempre en numero par: cuando el scroll
+     pasa la mitad del carril se le resta esa mitad y el ojo no lo nota, porque
+     lo que queda delante es identico. Solo la primera vuelta entra en el
+     recorrido del tabulador y del lector de pantalla; las demas salen, que si
+     no cada categoria se anuncia y se pulsa siete veces.
+
+     CUANTAS VUELTAS NO ES UN CAPRICHO, y aqui se pago aprendiendolo. La mitad
+     del carril tiene que ser MAS ANCHA QUE LA PANTALLA. El motor cierra la
+     vuelta cuando el scroll llega a esa mitad, y el scroll no puede pasar de
+     "ancho del carril menos ancho de la pantalla": si la mitad queda por
+     encima de ese tope, no se alcanza nunca, la cinta topa con el final y se
+     queda ahi parada para siempre.
+
+     A las otras tres cintas no les pasa porque una vuelta suya son doce tablas
+     o treinta y cuatro playas, mucho mas anchas que cualquier pantalla. Aqui
+     son siete casillas: 1344 pixeles contra una pantalla de 1920. Se anaden
+     vueltas hasta cubrirla, y se mide contra la pantalla FISICA y no contra la
+     ventana, para que agrandar la ventana despues no vuelva a dejarla corta. */
+  var riel = document.getElementById('rielCat');
+  function pintaVueltas(n){
+    var html = CATS.map(function(c, ci){ return casilla(c, ci, false); }).join('');
+    var copia = CATS.map(function(c, ci){ return casilla(c, ci, true); }).join('');
+    for(var i = 1; i < n; i++) html += copia;
+    riel.innerHTML = html;
+  }
+  pintaVueltas(2);
+  var anchoVuelta = riel.scrollWidth / 2;
+  var pantalla = Math.max(window.innerWidth || 0, (window.screen && screen.width) || 0);
+  if(anchoVuelta > 10){
+    /* el margen de 240 deja aire para que la vuelta cierre antes de topar, no
+       justo encima del tope */
+    var vueltas = Math.min(12, Math.max(2, Math.ceil((pantalla + 240) / anchoVuelta) * 2));
+    if(vueltas !== 2) pintaVueltas(vueltas);
+  }
   /* El motor se enciende antes de que nadie mire: arma el marco, saca los dos
      filos difuminados fuera del carril y pone las dos flechas. Sin `parar`, la
      cinta se frena al entrar en el marco, que es lo que quieren las casillas:
@@ -3289,7 +3315,14 @@ try { var _t = localStorage.getItem('gr-tema');
     /* La lista va pintada dos veces. Cuando el scroll pasa el ancho de una
        copia se le resta ese ancho y el ojo no lo nota, porque lo que queda
        delante es identico. Por eso la cinta no tiene principio ni final, y por
-       eso las dos flechas estan siempre encendidas. */
+       eso las dos flechas estan siempre encendidas.
+
+       CONDICION QUE HAY QUE CUMPLIR AL LLAMAR A ESTE MOTOR: media pista tiene
+       que ser mas ancha que la pantalla. El scroll no puede pasar de "ancho del
+       carril menos ancho de la pantalla", asi que si media pista queda por
+       encima de ese tope no se alcanza nunca, la vuelta no cierra y la cinta se
+       para al llegar al final. Con listas largas sobra; con listas cortas hay
+       que repetirlas mas veces, que es lo que hace el riel de categorias. */
     var copia = 0, bucle = true, auto = true;
     function medir(){ copia = corre.scrollWidth / 2; }
     medir();
