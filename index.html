@@ -400,12 +400,45 @@ html.auditando [data-rev]{opacity:1!important;transform:none!important;
    tenga encima. Sin el se comia los rotulos de las categorias. */
 .riel-cat{background:var(--fondo);border-bottom:1px solid var(--borde);
   padding:18px 0 clamp(34px,4.4vw,60px)}
-.riel-cat .pista{display:flex;gap:var(--gap);overflow-x:auto;scroll-snap-type:x mandatory;
-  padding:0 var(--marco) 6px;scrollbar-width:thin;scrollbar-color:var(--borde2) transparent}
-.riel-cat .pista::-webkit-scrollbar{height:3px}
-.riel-cat .pista::-webkit-scrollbar-thumb{background:var(--borde2);border-radius:9px}
-.tarj-cat{flex:0 0 128px;scroll-snap-align:start}
-@media (min-width:760px){.tarj-cat{flex:0 0 calc((100% - 6 * var(--gap)) / 7);min-width:112px}}
+/* ---- el riel corre solo, con el motor de las otras cintas ----
+   Encargo del 30 de agosto. Antes eran siete casillas quietas que se repartian
+   el ancho exacto de la pantalla y se arrastraban a mano. Ahora usa `cinta()`,
+   el mismo motor del escaparate y de la banda del mar, con sus dos flechas y
+   parandose al pasar el cursor.
+
+   Tres cosas que cambian por eso y que conviene no deshacer:
+
+   · **Las casillas miden un ancho fijo.** Antes era `calc((100% - 6*gap)/7)`,
+     para que las siete entraran justas. Dentro de un carril de `width:max-content`
+     un porcentaje no significa nada, y ademas ya no tienen que entrar siete:
+     entran las que quepan y el resto llega corriendo.
+   · **El aire va como margen de cada casilla, nunca como `gap`.** Con `gap` el
+     carril mide dos copias mas los huecos de en medio, la mitad ya no cae en el
+     borde de una copia y el bucle pega un brinco cada vuelta. Ya estaba anotado
+     para los escaparates y para la banda del mar.
+   · **Fuera el iman y fuera la barra de arrastre.** La cinta no tiene principio
+     ni final, y una barra que salta al cerrar la vuelta confunde mas de lo que
+     ayuda. */
+.pista-cat{position:relative;overflow-x:auto;scrollbar-width:none}
+.pista-cat::-webkit-scrollbar{display:none}
+.pista-cat .borde{position:absolute;top:0;bottom:0;width:clamp(26px,5vw,86px);
+  z-index:2;pointer-events:none}
+.pista-cat .borde.izq{left:0;background:linear-gradient(to right,var(--fondo),var(--fondo0))}
+.pista-cat .borde.der{right:0;background:linear-gradient(to left,var(--fondo),var(--fondo0))}
+/* El marco saca las flechas fuera del carril, y ahi el filo difuminado tiene
+   que empatar con el fondo de la seccion, que es `--fondo`. */
+.riel-cat .cinta-marco .borde.izq{background:linear-gradient(to right,var(--fondo),var(--fondo0))}
+.riel-cat .cinta-marco .borde.der{background:linear-gradient(to left,var(--fondo),var(--fondo0))}
+/* SIN RELLENO A LOS LADOS, y esto no es un descuido. El motor cierra la vuelta
+   restando el ancho de media pista, asi que las dos copias tienen que empalmar
+   exactas. Con `padding:0 var(--marco)` la copia de delante arranca con un
+   hueco que la de atras no tiene, y cada vuelta pegaba un brinco del ancho de
+   ese hueco. Es la misma razon por la que `.esc-corre` tampoco lo lleva. Los
+   dos extremos ya los resuelven los filos difuminados. */
+.riel-cats{display:flex;width:max-content;align-items:flex-start;padding:0 0 6px}
+.riel-cats>.tarj-cat{margin-right:var(--gap)}
+.tarj-cat{flex:none;width:128px}
+@media (min-width:760px){.tarj-cat{width:clamp(132px,11vw,172px)}}
 .tarj-cat .caja{display:block;position:relative;aspect-ratio:4/3;overflow:hidden;
   border-radius:var(--radio);background-color:var(--capa);background-size:cover;background-position:center;
   transition:transform .4s cubic-bezier(.22,1,.36,1)}
@@ -529,26 +562,51 @@ html.auditando [data-rev]{opacity:1!important;transform:none!important;
    El borde de arriba es una ola, dibujada con el mismo color de la cinta, que
    sube y muerde el video de la portada. */
 .marquesina{position:relative;z-index:5;background:var(--capa);
+  --ola-frente:var(--capa);--ola-atras:var(--capa3);
   border-top:1px solid var(--borde);border-bottom:1px solid var(--borde);
   padding:clamp(12px,1.6vw,18px) 0 clamp(13px,1.8vw,19px)}
-/* El borde de arriba es la cinta misma, con el filo en forma de ola. Dos capas
-   del mismo verde, una detras de otra, que corren a distinta velocidad y en
-   sentido contrario: eso es lo que hace que parezca agua y no un adorno.
-   Cada capa mide el doble del ancho y se corre justo la mitad, que son cinco
-   olas enteras, asi el ciclo cierra sin salto. */
-.marquesina .olas{position:absolute;left:0;right:0;bottom:100%;pointer-events:none;
+/* ---- el filo de ola ----
+   Lo llevan la cinta de marcas y la banda del mar. El borde de arriba de la
+   seccion es la seccion misma, con el filo en forma de ola. Dos capas, una
+   detras de otra, que corren a distinta velocidad y en sentido contrario: eso
+   es lo que hace que parezca agua y no un adorno. Cada capa mide el doble del
+   ancho y se corre justo la mitad, que son cinco olas enteras, asi el ciclo
+   cierra sin salto.
+
+   LA FORMA VA EN UNA MASCARA Y EL COLOR EN `background`, no al reves, y eso
+   importa. Antes el color iba escrito dentro del dibujo, asi que cada seccion
+   necesitaba su copia del SVG y ademas la version clara necesitaba otras dos:
+   cuatro dibujos iguales para pintar dos colores, y el tono de la ola viviendo
+   en dos sitios a la vez. Con la mascara la forma se escribe una vez y el color
+   es una linea por seccion, que ademas se voltea sola con el tono porque sale
+   de las mismas variables que el fondo.
+
+   Cada seccion que lo quiera declara `--ola-frente`, que es SU propio color de
+   fondo, y `--ola-atras`, que es el tono de al lado. */
+.olas{position:absolute;left:0;right:0;bottom:100%;pointer-events:none;
   height:clamp(24px,3.4vw,52px);overflow:hidden}
-.marquesina .capa-ola{position:absolute;left:0;bottom:-1px;width:200%;height:100%;
-  background-repeat:repeat-x;background-position:left bottom;will-change:transform}
-.marquesina .capa-ola.atras{background-size:12.5% 100%;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,27 C24,27 34,7 60,7 C86,7 96,27 120,27 L120,48 Z' fill='%2316362E'/%3E%3C/svg%3E");
-  animation:derivaAtras 27s linear infinite}
-.marquesina .capa-ola.frente{background-size:10% 100%;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,33 C24,33 36,17 60,17 C84,17 96,33 120,33 L120,48 Z' fill='%230A1A16'/%3E%3C/svg%3E");
-  animation:derivaFrente 17s linear infinite}
+.capa-ola{position:absolute;left:0;bottom:-1px;width:200%;height:100%;
+  -webkit-mask-repeat:repeat-x;mask-repeat:repeat-x;
+  -webkit-mask-position:left bottom;mask-position:left bottom;
+  will-change:transform}
+.capa-ola.atras{-webkit-mask-size:12.5% 100%;mask-size:12.5% 100%;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,27 C24,27 34,7 60,7 C86,7 96,27 120,27 L120,48 Z' fill='%23fff'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,27 C24,27 34,7 60,7 C86,7 96,27 120,27 L120,48 Z' fill='%23fff'/%3E%3C/svg%3E");
+  background:var(--ola-atras)}
+.capa-ola.frente{-webkit-mask-size:10% 100%;mask-size:10% 100%;
+  -webkit-mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,33 C24,33 36,17 60,17 C84,17 96,33 120,33 L120,48 Z' fill='%23fff'/%3E%3C/svg%3E");
+  mask-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,33 C24,33 36,17 60,17 C84,17 96,33 120,33 L120,48 Z' fill='%23fff'/%3E%3C/svg%3E");
+  background:var(--ola-frente)}
 @keyframes derivaFrente{from{transform:translate3d(0,0,0)}to{transform:translate3d(-50%,0,0)}}
 @keyframes derivaAtras{from{transform:translate3d(-50%,0,0)}to{transform:translate3d(0,0,0)}}
-@media (prefers-reduced-motion:reduce){.marquesina .capa-ola{animation:none}}
+/* Las dos bandas corren a distinto ritmo a proposito. Con los mismos segundos
+   arrancarian juntas al cargar la pagina y las dos olas irian clavadas en fase,
+   que se lee como una plantilla repetida y no como agua. */
+.marquesina .capa-ola.atras{animation:derivaAtras 27s linear infinite}
+.marquesina .capa-ola.frente{animation:derivaFrente 17s linear infinite}
+.mar .capa-ola.atras{animation:derivaAtras 23s linear infinite}
+.mar .capa-ola.frente{animation:derivaFrente 15s linear infinite}
+@media (prefers-reduced-motion:reduce){.capa-ola{animation:none}}
 .marquesina .rotulo{color:var(--gris);font-size:9px;padding:0 var(--marco);margin-bottom:clamp(8px,1vw,11px)}
 .pista-marcas{position:relative;overflow:hidden}
 .pista-marcas .borde{position:absolute;top:0;bottom:0;width:clamp(26px,5vw,86px);z-index:2;pointer-events:none}
@@ -1520,7 +1578,13 @@ html[data-tema=claro] .pg-fila .est{background:var(--agua);color:#04231D}
 /* La banda va sobre `--capa2`, un tono por encima del fondo de la pagina. El
    muro que estaba aqui era un bloque de foto a sangre y marcaba el ritmo de la
    pagina; sin nada, la cinta se perdia entre las dos secciones vecinas. */
-.mar{background:var(--capa2);border-top:1px solid var(--borde);
+/* `position:relative` para que el filo de ola se cuelgue de aqui, y `z-index`
+   para que la ola pase por encima de lo que hay arriba en vez de meterse
+   debajo. Los dos colores son los de esta banda: el de delante es su propio
+   fondo, asi la ola y la seccion son la misma pieza. */
+.mar{position:relative;z-index:5;background:var(--capa2);
+  --ola-frente:var(--capa2);--ola-atras:var(--capa3);
+  border-top:1px solid var(--borde);
   border-bottom:1px solid var(--borde);padding:clamp(22px,2.8vw,32px) 0 clamp(24px,3vw,34px)}
 .mar-cab{padding:0 var(--marco);margin-bottom:clamp(14px,1.8vw,20px);max-width:1320px}
 .mar-cab .rotulo{color:var(--gris2)}
@@ -1756,11 +1820,10 @@ html[data-tema=claro] .locales{
   --agua2:#4FE0CC;   --ambar2:#FFD98A;
   --boton-h:#4FE0CC;
 }
-/* el filo de la cinta de marcas lleva el color dentro del dibujo */
-html[data-tema=claro] .marquesina .capa-ola.atras{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,27 C24,27 34,7 60,7 C86,7 96,27 120,27 L120,48 Z' fill='%23D5E7DD'/%3E%3C/svg%3E")}
-html[data-tema=claro] .marquesina .capa-ola.frente{
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 120 48' preserveAspectRatio='none'%3E%3Cpath d='M0,48 L0,33 C24,33 36,17 60,17 C84,17 96,33 120,33 L120,48 Z' fill='%23FFFFFF'/%3E%3C/svg%3E")}
+/* Aqui vivia el filo de la cinta de marcas repintado para el tono claro. Ya no
+   hace falta: desde el 30 de agosto el color de la ola sale de `--ola-frente` y
+   `--ola-atras`, que apuntan a las mismas variables de fondo que se voltean
+   solas. Un tono menos escrito dos veces.
 
 /* Mientras se cambia de tono no hay transiciones. Sin esto, cualquier elemento
    con `transition:color` se queda con el color viejo pegado para siempre: el
@@ -2046,7 +2109,13 @@ try { var _t = localStorage.getItem('gr-tema');
 </section>
 
 <section class="riel-cat" aria-label="Categorías">
-  <div class="pista" id="rielCat"></div>
+  <!-- Corre con `cinta()`, el mismo motor del escaparate y de la banda del mar.
+       Los dos filos difuminados se los lleva el marco al encenderlo. -->
+  <div class="pista-cat">
+    <span class="borde izq" aria-hidden="true"></span>
+    <span class="borde der" aria-hidden="true"></span>
+    <div class="riel-cats" id="rielCat"></div>
+  </div>
 </section>
 
 <section class="marquesina" aria-label="Marcas que vendemos">
@@ -2118,6 +2187,10 @@ try { var _t = localStorage.getItem('gr-tema');
 </section>
 
 <section class="mar" aria-label="Cómo está el mar">
+  <!-- El mismo filo de ola de la cinta de marcas. Es una pieza suelta: la forma
+       va en una mascara y el color en `--ola-frente` y `--ola-atras`, que esta
+       seccion declara en su propia regla. -->
+  <span class="olas" aria-hidden="true"><span class="capa-ola atras"></span><span class="capa-ola frente"></span></span>
   <div class="mar-cab">
     <p class="rotulo">Cómo está el mar</p>
     <p class="nota">Diecisiete puntos entre Lima y el norte, con la ola, el viento, el agua
@@ -2826,7 +2899,7 @@ try { var _t = localStorage.getItem('gr-tema');
     return por(c.f).filter(function(p){ return FOTOS_REALES[p.s]; }).slice(0, TOPE_CAT);
   }
   var vitrinas = [];
-  document.getElementById('rielCat').innerHTML = CATS.map(function(c, ci){
+  function casilla(c, ci, copia){
     var lista = piezasDe(c);
     var cuadros = lista.map(function(p, i){
       return '<span class="cuadro real' + (i === 0 ? ' viva' : '') +
@@ -2834,13 +2907,27 @@ try { var _t = localStorage.getItem('gr-tema');
     }).join('');
     var uno = lista[0];
     return '<a class="tarj-cat" href="' + (uno ? '#p/' + uno.s : (ANCLA[c.n] || '#')) + '"' +
-      (uno ? ' data-ficha="' + uno.s + '"' : '') + ' data-vit="' + ci + '">' +
+      (uno ? ' data-ficha="' + uno.s + '"' : '') + ' data-vit="' + ci + '"' +
+      (copia ? ' tabindex="-1" aria-hidden="true"' : '') + '>' +
       '<span class="caja' + (uno ? ' sobre-real' : '') +
         '" style="background-image:var(--f-' + c.im + ')">' +
         cuadros +
         '<span class="velo"></span><span class="n">' + por(c.f).length + '</span>' +
       '</span><span class="nom">' + c.n + '</span></a>';
-  }).join('');
+  }
+  /* La lista va pintada DOS VECES, que es lo que pide el motor: cuando el
+     scroll pasa el ancho de una copia se le resta ese ancho y el ojo no lo
+     nota, porque lo que queda delante es identico. La segunda copia sale del
+     recorrido del tabulador y del lector de pantalla, que si no cada categoria
+     se anuncia y se pulsa dos veces. */
+  document.getElementById('rielCat').innerHTML =
+    CATS.map(function(c, ci){ return casilla(c, ci, false); }).join('') +
+    CATS.map(function(c, ci){ return casilla(c, ci, true); }).join('');
+  /* El motor se enciende antes de que nadie mire: arma el marco, saca los dos
+     filos difuminados fuera del carril y pone las dos flechas. Sin `parar`, la
+     cinta se frena al entrar en el marco, que es lo que quieren las casillas:
+     aqui todo el ancho es contenido, no hay titular ni buscador dentro. */
+  cinta(document.querySelector('.pista-cat'));
 
   [].forEach.call(document.querySelectorAll('.tarj-cat'), function(a){
     var lista = piezasDe(CATS[+a.getAttribute('data-vit')]);
@@ -3169,7 +3256,7 @@ try { var _t = localStorage.getItem('gr-tema');
      por estar cerca deja al usuario sin saber por que se paro. */
   function cinta(pasarela, parar){
     if(!pasarela || pasarela.__cinta) return pasarela && pasarela.__api;
-    var corre = pasarela.querySelector('.esc-corre, .riel-mar');
+    var corre = pasarela.querySelector('.esc-corre, .riel-mar, .riel-cats');
     if(!corre) return;
     pasarela.__cinta = true;
 
